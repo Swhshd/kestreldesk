@@ -1,0 +1,68 @@
+# This file has been modified for the KestrelDesk project.
+language: zh-CN
+
+server:
+  port: 8083
+  cors:
+    allowedOrigins:
+      - http://localhost:8083
+      - http://127.0.0.1:8083
+
+db:
+  type: mysql
+  dsn: ""
+
+logger:
+  level: info
+  format: text
+  addSource: false
+
+auth:
+  tokenTTLHours: 24
+  maxFailedAttempts: 5
+  credentialLockMinute: 30
+
+storage:
+  default: local
+  maxUploadSizeMB: 5
+  local:
+    root: /app/data/storage
+    baseUrl: /storage
+  oss:
+    endpoint: ""
+    bucket: ""
+    accessKeyId: ""
+    accessKeySecret: ""
+    baseUrl: ""
+    private: false
+    signedUrlExpireSeconds: 600
+
+vectorDB:
+  type: lancedb
+  qdrant:
+    host: qdrant
+    grpcPort: 6334
+    apiKey: ""
+    useTls: false
+  lancedb:
+    path: /app/data/lancedb
+
+mcp:
+  enabled: true
+  servers:
+    system:
+      enabled: true
+      endpoint: http://127.0.0.1:8083/api/mcp
+      timeoutMs: 60000
+      headers: {}
+
+wxWork:
+  enabled: false
+
+oidc:
+  enabled: false
+
+customerSession:
+  secret: ""
+  ttlMinutes: 120
+  refreshThresholdMinutes: 30

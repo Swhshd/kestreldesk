@@ -1,0 +1,59 @@
+# This file has been modified for the KestrelDesk project.
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: cs_ai_agent
+      MYSQL_USER: cs_ai_agent
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u\"$${MYSQL_USER}\" -p\"$${MYSQL_PASSWORD}\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  kestreldesk:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app-lancedb
+      args:
+        LANCEDB_VERSION: v0.1.2
+    image: kestreldesk:latest-lancedb
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8083:8083"
+    volumes:
+      - kestreldesk-data:/app/data
+      - ./docker/kestreldesk-lancedb.yaml:/app/config/config.yaml:ro
+    environment:
+      TZ: Asia/Shanghai
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      TRUSTED_PLATFORM: ${TRUSTED_PLATFORM:-}
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_SECURITY: ${SMTP_SECURITY:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-}
+      SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-}
+      DATABASE_URL: "cs_ai_agent:${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}@tcp(mysql:3306)/cs_ai_agent?charset=utf8mb4&parseTime=True&multiStatements=true&loc=Local"
+      CUSTOMER_SESSION_SECRET: ${CUSTOMER_SESSION_SECRET:?CUSTOMER_SESSION_SECRET is required}
+
+volumes:
+  mysql-data:
+  kestreldesk-data:

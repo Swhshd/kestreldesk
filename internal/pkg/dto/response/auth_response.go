@@ -1,0 +1,37 @@
+package response
+
+// This file has been modified for the KestrelDesk project.
+
+import "github.com/Swhshd/kestreldesk/internal/pkg/enums"
+
+type AuthUserResponse struct {
+	ID       int64          `json:"id"`
+	Username string         `json:"username"`
+	Nickname string         `json:"nickname"`
+	Avatar   string         `json:"avatar"`
+	Email    string         `json:"email,omitempty"`
+	UserType enums.UserType `json:"userType"`
+	Status   enums.Status   `json:"status"`
+	Roles    []string       `json:"roles"`
+}
+
+type LoginResponse struct {
+	AccessToken string            `json:"accessToken"`
+	ExpiresAt   string            `json:"expiresAt"`
+	User        *AuthUserResponse `json:"user"`
+	Permissions []string          `json:"permissions"`
+	Roles       []string          `json:"roles"`
+}
+
+type PasswordResetRequestResponse struct {
+	Message string `json:"message"`
+}
+
+type PublicConfigResponse struct {
+	Language             string `json:"language"`
+	CompanyName          string `json:"companyName,omitempty"`
+	CompanyLogoURL       string `json:"companyLogoUrl,omitempty"`
+	PasswordLoginEnabled bool   `json:"passwordLoginEnabled"`
+	WxWorkEnabled        bool   `json:"wxworkEnabled"`
+	OIDCEnabled          bool   `json:"oidcEnabled"`
+}

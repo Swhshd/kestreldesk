@@ -1,0 +1,85 @@
+# This file has been modified for the KestrelDesk project.
+language: zh-CN
+
+server:
+  port: 8083
+  cors:
+    # 浏览器跨域白名单。生产部署时改为实际前端/嵌入站点域名。
+    allowedOrigins:
+      - http://127.0.0.1:8083
+      - http://localhost:8083
+
+db:
+  type: mysql
+  dsn: ""
+  maxIdleConns: 5
+  maxOpenConns: 20
+  connMaxIdleTimeSeconds: 300
+  connMaxLifetimeSeconds: 1800
+
+logger:
+  level: info
+  format: text
+  addSource: false
+
+auth:
+  tokenTTLHours: 12
+  maxFailedAttempts: 5
+  credentialLockMinute: 15
+
+customerSession:
+  secret: ""
+  ttlMinutes: 120
+  refreshThresholdMinutes: 30
+
+storage:
+  default: local
+  maxUploadSizeMB: 20
+  local:
+    root: /app/data/storage
+    baseUrl: /storage
+  oss:
+    endpoint: ""
+    bucket: ""
+    accessKeyId: ""
+    accessKeySecret: ""
+    baseUrl: ""
+    private: false
+    signedUrlExpireSeconds: 600
+
+vectorDB:
+  type: qdrant
+  qdrant:
+    host: qdrant
+    grpcPort: 6334
+    apiKey: ""
+    useTls: false
+  # LanceDB requires building the backend with -tags lancedb and LanceDB native libraries.
+  lancedb:
+    path: /app/data/lancedb
+
+mcp:
+  enabled: true
+  servers:
+    system:
+      enabled: true
+      endpoint: "http://127.0.0.1:8083/api/mcp"
+      timeoutMs: 15000
+      headers: {}
+
+wxWork:
+  enabled: false
+  corpId: ""
+  corpSecret: ""
+  agentId: ""
+  oauthRedirect: ""
+  stateSecret: ""
+  rsaPrivateKey: ""
+  token: ""
+  encodingAESKey: ""
+  notify:
+    enabled: false
+    toUsers: []
+    safe: false
+    enableDuplicateCheck: true
+    duplicateCheckInterval: 1800

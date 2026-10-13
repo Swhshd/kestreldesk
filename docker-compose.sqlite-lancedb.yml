@@ -1,0 +1,25 @@
+# This file has been modified for the KestrelDesk project.
+services:
+  kestreldesk:
+    image: kestreldesk:latest-lancedb
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    volumes:
+      - ./docker/kestreldesk-sqlite-lancedb.yaml:/app/config/config.yaml:ro
+      - ./data:/app/data
+    environment:
+      TZ: Asia/Shanghai
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      TRUSTED_PLATFORM: ${TRUSTED_PLATFORM:-}
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_SECURITY: ${SMTP_SECURITY:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-}
+      SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-}
+      CUSTOMER_SESSION_SECRET: ${CUSTOMER_SESSION_SECRET:?CUSTOMER_SESSION_SECRET is required}

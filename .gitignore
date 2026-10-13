@@ -1,0 +1,27 @@
+# This file has been modified for the KestrelDesk project.
+.DS_Store
+.worktrees
+.idea
+.pnpm-store
+
+data/
+config/config.yaml
+.env
+.env.*
+!.env.example
+/include/
+/lib/
+
+dist/
+__debug_bin*
+node_modules/
+.next/
+.task/
+*.tsbuildinfo
+
+.superpowers
+
+kestreldesk
+
+test-reports
+web/public/flowgram-editor/

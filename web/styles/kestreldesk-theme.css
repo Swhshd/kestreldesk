@@ -1,0 +1,211 @@
+/* KestrelDesk visual tokens. Keep the existing theme/palette activation intact. */
+:root {
+  --action: var(--primary);
+  --action-hover: color-mix(in srgb, var(--action) 82%, #030508);
+  --action-foreground: var(--primary-foreground);
+  --brand-indigo: #6366f1;
+  --human: #4f46e5;
+  --human-foreground: #ffffff;
+  --human-border: #6366f1;
+  --message-ai-surface: #ecfeff;
+  --message-ai-border: #a5f3fc;
+  --conversation-list: #f8faff;
+  --conversation-chat: #ffffff;
+  --conversation-details: #f4f7fc;
+  --brand-panel: #05070b;
+  --brand-panel-foreground: #f8fafc;
+  --brand-panel-muted: #c8d1dc;
+  --brand-glow: color-mix(in srgb, var(--action) 7%, transparent);
+  --brand-glow-secondary: color-mix(in srgb, var(--brand-indigo) 4%, transparent);
+}
+
+/* Higher specificity than legacy defaults; alternative dashboard palettes stay available. */
+:root:not(.dark):not([data-palette]),
+:root:not(.dark)[data-palette="plain"] {
+  --background: #f4f7fc;
+  --foreground: #101a2e;
+  --card: #ffffff;
+  --card-foreground: #101a2e;
+  --popover: #ffffff;
+  --popover-foreground: #101a2e;
+  --primary: #0e7490;
+  --primary-foreground: #ffffff;
+  --secondary: #edf0ff;
+  --secondary-foreground: #4338ca;
+  --muted: #eaf0f7;
+  --muted-foreground: #52627a;
+  --accent: #e0f7fa;
+  --accent-foreground: #155e75;
+  --border: #ccd8e7;
+  --input: #8495ad;
+  --ring: #0e7490;
+  --sidebar: #f8faff;
+  --sidebar-foreground: #22314a;
+  --sidebar-primary: #e0f7fa;
+  --sidebar-primary-foreground: #155e75;
+  --sidebar-accent: #eaf0f7;
+  --sidebar-accent-foreground: #101a2e;
+  --sidebar-border: #ccd8e7;
+  --sidebar-ring: #0e7490;
+  --action: #0e7490;
+  --action-hover: #155e75;
+  --action-foreground: #ffffff;
+}
+
+:root.dark:not([data-palette]),
+:root.dark[data-palette="plain"] {
+  --background: #05070b;
+  --foreground: #f8fafc;
+  --card: #0b1018;
+  --card-foreground: #f8fafc;
+  --popover: #101722;
+  --popover-foreground: #f8fafc;
+  --primary: #22d3ee;
+  --primary-foreground: #030508;
+  --secondary: #101722;
+  --secondary-foreground: #c8d1dc;
+  --muted: #0c1119;
+  --muted-foreground: #8b98aa;
+  --accent: #111923;
+  --accent-foreground: #f8fafc;
+  --border: #182230;
+  --input: #6c7888;
+  --ring: #22d3ee;
+  --sidebar: #060910;
+  --sidebar-foreground: #c8d1dc;
+  --sidebar-primary: #111722;
+  --sidebar-primary-foreground: #f8fafc;
+  --sidebar-accent: #101722;
+  --sidebar-accent-foreground: #f8fafc;
+  --sidebar-border: #182230;
+  --sidebar-ring: #22d3ee;
+  --action: #22d3ee;
+  --action-hover: #06b6d4;
+  --action-foreground: #030508;
+  --human: #19182d;
+  --human-foreground: #ecebff;
+  --human-border: #343354;
+  --message-ai-surface: #0b171c;
+  --message-ai-border: #17414a;
+  --conversation-list: #060910;
+  --conversation-chat: #080c12;
+  --conversation-details: #0b1018;
+  --chart-1: #22d3ee;
+  --chart-2: #34d399;
+  --chart-3: #f59e0b;
+  --chart-4: #a5b4fc;
+  --chart-5: #c4b5fd;
+}
+
+.kestreldesk-brand-panel {
+  position: relative;
+  overflow: hidden;
+  color: var(--brand-panel-foreground);
+  background: radial-gradient(ellipse at 0 0, var(--brand-glow), transparent 65%),
+    radial-gradient(ellipse at 100% 100%, var(--brand-glow-secondary), transparent 60%),
+    var(--brand-panel);
+}
+
+.kestreldesk-brand-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: linear-gradient(var(--brand-panel-muted) 1px, transparent 1px),
+    linear-gradient(90deg, var(--brand-panel-muted) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.kestreldesk-brand-panel img {
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--action) 18%, transparent));
+}
+
+.kestreldesk-login {
+  background: var(--background);
+}
+
+.kestreldesk-support-hero {
+  background:
+    radial-gradient(ellipse at 50% 0, var(--brand-glow), transparent 65%),
+    radial-gradient(ellipse at 100% 100%, var(--brand-glow-secondary), transparent 70%),
+    var(--background);
+}
+
+.kestreldesk-support-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: linear-gradient(var(--muted-foreground) 1px, transparent 1px),
+    linear-gradient(90deg, var(--muted-foreground) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+:root.dark:not([data-palette]) [data-visual-surface="conversation-list"],
+:root.dark[data-palette="plain"] [data-visual-surface="conversation-list"] {
+  background-color: var(--conversation-list);
+}
+
+:root.dark:not([data-palette]) [data-visual-surface="conversation-chat"],
+:root.dark[data-palette="plain"] [data-visual-surface="conversation-chat"] {
+  background-color: var(--conversation-chat);
+}
+
+:root.dark:not([data-palette]) [data-visual-surface="conversation-details"],
+:root.dark[data-palette="plain"] [data-visual-surface="conversation-details"] {
+  background-color: var(--conversation-details);
+}
+
+:root.dark:not([data-palette]) [data-message-variant="ai"] > [data-slot="bubble-content"],
+:root.dark[data-palette="plain"] [data-message-variant="ai"] > [data-slot="bubble-content"] {
+  border-color: var(--message-ai-border);
+  background-color: var(--message-ai-surface);
+}
+
+:root.dark:not([data-palette]) [data-message-variant="agent"] > [data-slot="bubble-content"],
+:root.dark[data-palette="plain"] [data-message-variant="agent"] > [data-slot="bubble-content"] {
+  border-color: var(--human-border);
+  background-color: var(--human);
+  color: var(--human-foreground);
+}
+
+.customer-identity-avatar {
+  --customer-avatar-border: #a9843f;
+  --customer-avatar-foreground: #84652c;
+  --customer-avatar-surface: #f6f0e2;
+}
+
+:root.dark .customer-identity-avatar {
+  --customer-avatar-border: #d6b56c;
+  --customer-avatar-foreground: #e7c987;
+  --customer-avatar-surface: #19150c;
+}
+
+.customer-identity-avatar::after {
+  border-color: var(--customer-avatar-border);
+  mix-blend-mode: normal;
+}
+
+.customer-identity-avatar [data-slot="avatar-fallback"] {
+  background-color: var(--customer-avatar-surface);
+  color: var(--customer-avatar-foreground);
+}
+
+[data-sidebar="menu-sub-button"][data-active] {
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--ring);
+}
+
+[data-slot="input"]::placeholder {
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+
+/* Keep transitions finite and respect the existing reduced-motion preference. */
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="button"] {
+    transition-duration: 0ms;
+  }
+}

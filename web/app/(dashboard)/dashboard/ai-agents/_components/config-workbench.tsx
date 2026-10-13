@@ -1,0 +1,1085 @@
+"use client"
+
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
+import {
+  HistoryIcon,
+  MessageSquareTextIcon,
+  PlugIcon,
+  SaveIcon,
+  SettingsIcon,
+  Trash2Icon,
+  UserRoundCheckIcon,
+} from "lucide-react"
+import { toast } from "sonner"
+
+import { ContentEditor } from "@/components/content-editor"
+import { OptionCombobox } from "@/components/option-combobox"
+import { ProjectDialog } from "@/components/project-dialog"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Textarea } from "@/components/ui/textarea"
+import { useI18n } from "@/i18n/provider"
+import {
+  createAIAgent,
+  fetchAIAgent,
+  fetchAIAgentRevisions,
+  fetchAIConfigsAll,
+  fetchAIWorkflows,
+  fetchAgentTeamsAll,
+  fetchKnowledgeBasesAll,
+  fetchMCPCatalog,
+  fetchSkillDefinitionsAll,
+  publishAIAgent,
+  rollbackAIAgent,
+  updateAIAgent,
+  type AIAgent,
+  type AIAgentWorkflowBindingInput,
+  type AgentRevision,
+  type AIConfig,
+  type AIWorkflow,
+  type AdminAgentTeam,
+  type CreateAIAgentPayload,
+  type KnowledgeBase,
+  type MCPToolCatalogItem,
+  type SkillDefinition,
+} from "@/lib/api/admin"
+import {
+  AIAgentFallbackMode,
+  AIAgentHandoffMode,
+  AIModelType,
+  IMConversationServiceMode,
+  Status,
+} from "@/lib/generated/enums"
+import { cn } from "@/lib/utils"
+
+type SectionKey = "setup" | "persona" | "capability" | "service"
+type MCPToolItem = CreateAIAgentPayload["mcpTools"][number]
+
+type MCPToolOption = {
+  value: string
+  label: string
+  group: string
+  subtitle: string
+  description?: string
+  meta: MCPToolItem
+}
+
+function normalizeMCPToolsWithCatalog(
+  tools: MCPToolItem[],
+  catalog: MCPToolCatalogItem[],
+) {
+  return tools.map((tool) => {
+    const catalogTool = catalog.find((item) => item.toolCode === tool.toolCode)
+    if (!catalogTool || catalogTool.riskEditable) return tool
+    return {
+      ...tool,
+      title: catalogTool.title || tool.title,
+      description: catalogTool.description || tool.description,
+      riskLevel: catalogTool.riskLevel,
+      requireConfirmation: catalogTool.requireConfirmation,
+    }
+  })
+}
+
+function toText(value: string | number | undefined | null) {
+  if (value === undefined || value === null || value === 0) return ""
+  return String(value)
+}
+
+function uniqueNumbers(input: number[]) {
+  return Array.from(new Set(input.filter((id) => Number.isFinite(id) && id > 0)))
+}
+
+export function AIAgentConfigWorkbench({
+  agentId,
+  onAgentSaved,
+  onAgentCreated,
+  onCancel,
+}: {
+  agentId?: number | null
+  onAgentSaved?: () => void
+  onAgentCreated?: (agent: AIAgent) => void
+  onCancel?: () => void
+}) {
+  const t = useI18n()
+  const [currentAgentId, setCurrentAgentId] = useState(agentId ?? null)
+  const [activeSection, setActiveSection] = useState<SectionKey>("setup")
+  const [agent, setAgent] = useState<AIAgent | null>(null)
+  const [agentRevisions, setAgentRevisions] = useState<AgentRevision[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [versionDialogOpen, setVersionDialogOpen] = useState(false)
+
+  const [name, setName] = useState("")
+  const [description, setDescription] = useState("")
+  const [aiConfigId, setAIConfigId] = useState("")
+  const [serviceMode, setServiceMode] = useState(String(IMConversationServiceMode.AIFirst))
+  const [systemPrompt, setSystemPrompt] = useState("")
+  const [welcomeMessage, setWelcomeMessage] = useState("")
+  const [replyTimeoutSeconds, setReplyTimeoutSeconds] = useState("180")
+  const [handoffMode, setHandoffMode] = useState(String(AIAgentHandoffMode.WaitPool))
+  const [fallbackMode, setFallbackMode] = useState(String(AIAgentFallbackMode.NoAnswer))
+  const [fallbackMessage, setFallbackMessage] = useState("")
+  const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([])
+  const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([])
+  const [selectedKnowledgeBaseIds, setSelectedKnowledgeBaseIds] = useState<number[]>([])
+  const [mcpTools, setMCPTools] = useState<MCPToolItem[]>([])
+  const [workflowBindings, setWorkflowBindings] = useState<AIAgentWorkflowBindingInput[]>([])
+
+  const [aiConfigs, setAIConfigs] = useState<AIConfig[]>([])
+  const [agentTeams, setAgentTeams] = useState<AdminAgentTeam[]>([])
+  const [skills, setSkills] = useState<SkillDefinition[]>([])
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([])
+  const [toolCatalog, setToolCatalog] = useState<MCPToolCatalogItem[]>([])
+  const [publishedWorkflows, setPublishedWorkflows] = useState<AIWorkflow[]>([])
+
+  const [teamToAdd, setTeamToAdd] = useState("")
+
+  useEffect(() => {
+    setCurrentAgentId(agentId ?? null)
+  }, [agentId])
+
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [configsRes, teamsRes, skillListRes, knowledgeBaseListRes, catalogRes, workflowPageRes] =
+        await Promise.allSettled([
+          fetchAIConfigsAll({ modelType: AIModelType.LLM }),
+          fetchAgentTeamsAll(),
+          fetchSkillDefinitionsAll({ status: Status.Ok }),
+          fetchKnowledgeBasesAll({ status: Status.Ok }),
+          fetchMCPCatalog(),
+          fetchAIWorkflows({ limit: 100 }),
+        ])
+
+      const configs = configsRes.status === "fulfilled" ? configsRes.value : []
+      const teams = teamsRes.status === "fulfilled" ? teamsRes.value : []
+      const skillList = skillListRes.status === "fulfilled" ? skillListRes.value : []
+      const knowledgeBaseList = knowledgeBaseListRes.status === "fulfilled" ? knowledgeBaseListRes.value : []
+      const catalog = catalogRes.status === "fulfilled" ? catalogRes.value : []
+      const workflowPage = workflowPageRes.status === "fulfilled" ? workflowPageRes.value : { results: [] }
+
+      setAIConfigs(configs ?? [])
+      setAgentTeams(teams ?? [])
+      setSkills(skillList ?? [])
+      setKnowledgeBases(knowledgeBaseList ?? [])
+      setToolCatalog(catalog ?? [])
+      setPublishedWorkflows(
+        (workflowPage.results ?? []).filter((item) => item.publishedVersionId > 0),
+      )
+
+      if (!currentAgentId || currentAgentId <= 0) {
+        setAgent(null)
+        setAgentRevisions([])
+        setName("")
+        setDescription("")
+        setAIConfigId(configs && configs.length > 0 ? String(configs[0].id) : "")
+        setServiceMode(String(IMConversationServiceMode.AIFirst))
+        setSystemPrompt("")
+        setWelcomeMessage("")
+        setReplyTimeoutSeconds("180")
+        setHandoffMode(String(AIAgentHandoffMode.WaitPool))
+        setFallbackMode(String(AIAgentFallbackMode.NoAnswer))
+        setFallbackMessage("")
+        setSelectedTeamIds([])
+        setSelectedSkillIds([])
+        setSelectedKnowledgeBaseIds([])
+        setMCPTools([])
+        setWorkflowBindings([])
+        return
+      }
+
+      const [detail, revisions] = await Promise.all([
+        fetchAIAgent(currentAgentId),
+        fetchAIAgentRevisions(currentAgentId),
+      ])
+      setAgent(detail)
+      setAgentRevisions(revisions ?? [])
+      setName(detail.name)
+      setDescription(detail.description || "")
+      setAIConfigId(toText(detail.aiConfigId))
+      setServiceMode(String(detail.serviceMode || IMConversationServiceMode.AIFirst))
+      setSystemPrompt(detail.systemPrompt || "")
+      setWelcomeMessage(detail.welcomeMessage || "")
+      setReplyTimeoutSeconds(String(detail.replyTimeoutSeconds ?? 180))
+      setHandoffMode(String(detail.handoffMode || AIAgentHandoffMode.WaitPool))
+      setFallbackMode(String(detail.fallbackMode || AIAgentFallbackMode.NoAnswer))
+      setFallbackMessage(detail.fallbackMessage || "")
+      setSelectedTeamIds((detail.teams ?? []).map((team) => team.id))
+      setSelectedSkillIds(detail.skillIds ?? [])
+      setSelectedKnowledgeBaseIds(detail.knowledgeBaseIds ?? [])
+      setMCPTools(normalizeMCPToolsWithCatalog(detail.mcpTools ?? [], catalog ?? []))
+      setWorkflowBindings(
+        (detail.workflowBindings ?? []).map(
+          ({ workflowVersionId, toolName, triggerInstruction, priority, enabled }) => ({
+            workflowVersionId,
+            toolName,
+            triggerInstruction,
+            priority,
+            enabled,
+          }),
+        ),
+      )
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("aiAgent.loadDetailFailed"))
+    } finally {
+      setLoading(false)
+    }
+  }, [currentAgentId, t])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
+
+  async function refreshAgentPublicationState(id: number) {
+    const [detail, revisions] = await Promise.all([
+      fetchAIAgent(id),
+      fetchAIAgentRevisions(id),
+    ])
+    setAgent((current) =>
+      current
+        ? { ...current, publishedRevisionId: detail.publishedRevisionId }
+        : detail,
+    )
+    setAgentRevisions(revisions ?? [])
+  }
+
+  const serviceModeOptions = useMemo(
+    () => [
+      { value: String(IMConversationServiceMode.AIOnly), label: t("aiAgent.serviceAiOnly") },
+      { value: String(IMConversationServiceMode.HumanOnly), label: t("aiAgent.serviceHumanOnly") },
+      { value: String(IMConversationServiceMode.AIFirst), label: t("aiAgent.serviceAiFirst") },
+    ],
+    [t],
+  )
+  const handoffModeOptions = useMemo(
+    () => [
+      { value: String(AIAgentHandoffMode.WaitPool), label: t("aiAgent.handoffWaitPool") },
+      {
+        value: String(AIAgentHandoffMode.DefaultTeamPool),
+        label: t("aiAgent.handoffDefaultTeamPool"),
+      },
+      {
+        value: String(AIAgentHandoffMode.AIHoldAndNotify),
+        label: t("aiAgent.handoffAiHoldAndNotify"),
+      },
+    ],
+    [t],
+  )
+  const fallbackModeOptions = useMemo(
+    () => [
+      { value: String(AIAgentFallbackMode.NoAnswer), label: t("aiAgent.fallbackNoAnswer") },
+      { value: String(AIAgentFallbackMode.SuggestRetry), label: t("aiAgent.fallbackSuggestRetry") },
+      { value: String(AIAgentFallbackMode.Handoff), label: t("aiAgent.sectionHandoff") },
+    ],
+    [t],
+  )
+  const aiConfigOptions = useMemo(
+    () =>
+      aiConfigs.map((item) => ({
+        value: String(item.id),
+        label: `${item.name} · ${item.modelName}`,
+      })),
+    [aiConfigs],
+  )
+  const teamOptions = useMemo(
+    () => agentTeams.map((item) => ({ value: String(item.id), label: item.name })),
+    [agentTeams],
+  )
+  const skillOptions = useMemo(
+    () => skills.map((item) => ({ value: String(item.id), label: item.name })),
+    [skills],
+  )
+  const knowledgeBaseOptions = useMemo(
+    () => knowledgeBases.map((item) => ({ value: String(item.id), label: item.name })),
+    [knowledgeBases],
+  )
+  const mcpToolOptions = useMemo<MCPToolOption[]>(
+    () =>
+      toolCatalog
+        .filter((tool) => !tool.autoInjected && tool.sourceType === "mcp")
+        .map((tool) => ({
+          value: tool.toolCode,
+          label: tool.title || tool.toolName,
+          group: tool.serverCode,
+          subtitle: tool.toolCode,
+          description: tool.description || undefined,
+          meta: {
+            toolCode: tool.toolCode,
+            serverCode: tool.serverCode,
+            toolName: tool.toolName,
+            title: tool.title || tool.toolName,
+            description: tool.description || "",
+            riskLevel: tool.riskLevel,
+            requireConfirmation: tool.requireConfirmation,
+            arguments: undefined,
+          },
+        })),
+    [toolCatalog],
+  )
+  const workflowOptions = useMemo(
+    () =>
+      publishedWorkflows.map((workflow) => ({
+        value: String(workflow.publishedVersionId),
+        label: workflow.name,
+        subtitle: t("aiAgent.fixedVersion", { version: String(workflow.publishedVersionId) }),
+      })),
+    [publishedWorkflows, t],
+  )
+
+  function selectedOptions(ids: number[], options: { value: string; label: string }[]) {
+    return ids
+      .map((id) => options.find((option) => Number(option.value) === id))
+      .filter((option): option is { value: string; label: string } => Boolean(option))
+  }
+
+  function addSelected(value: string, current: number[], setNext: (ids: number[]) => void) {
+    const id = Number(value)
+    if (!Number.isFinite(id) || id <= 0 || current.includes(id)) return
+    setNext([...current, id])
+  }
+
+  function setMCPToolSelection(values: string[]) {
+    setMCPTools(
+      values.flatMap((value) => {
+        const current = mcpTools.find((item) => item.toolCode === value)
+        if (current) return [current]
+        const option = mcpToolOptions.find((item) => item.value === value)
+        return option ? [option.meta] : []
+      }),
+    )
+  }
+
+  function setWorkflowSelection(values: string[]) {
+    const selectedVersionIds = values.map(Number).filter((value) => value > 0)
+    setWorkflowBindings(
+      selectedVersionIds.flatMap((workflowVersionId, index) => {
+        const current = workflowBindings.find(
+          (binding) => binding.workflowVersionId === workflowVersionId,
+        )
+        if (current) {
+          return [{ ...current, priority: index + 1, enabled: true }]
+        }
+        const workflow = publishedWorkflows.find(
+          (item) => item.publishedVersionId === workflowVersionId,
+        )
+        if (!workflow) return []
+        return [
+          {
+            workflowVersionId,
+            toolName: workflow.name,
+            triggerInstruction: "",
+            priority: index + 1,
+            enabled: true,
+          },
+        ]
+      }),
+    )
+  }
+
+  function validateForm() {
+    if (!name.trim()) {
+      setActiveSection("setup")
+      toast.error(t("aiAgent.nameRequired"))
+      return false
+    }
+    if (!Number(aiConfigId)) {
+      setActiveSection("setup")
+      toast.error(t("aiAgent.aiConfigRequired"))
+      return false
+    }
+    return true
+  }
+
+  function buildPayload(): CreateAIAgentPayload {
+    return {
+      name: name.trim(),
+      description: description.trim(),
+      aiConfigId: Number(aiConfigId),
+      serviceMode: Number(serviceMode),
+      systemPrompt: systemPrompt.trim(),
+      welcomeMessage: welcomeMessage.trim(),
+      replyTimeoutSeconds: Number(replyTimeoutSeconds),
+      rolloutPercent: agent?.rolloutPercent || 100,
+      teamIds: uniqueNumbers(selectedTeamIds),
+      handoffMode: Number(handoffMode),
+      fallbackMode: Number(fallbackMode),
+      fallbackMessage: fallbackMessage.trim(),
+      knowledgeBaseIds: uniqueNumbers(selectedKnowledgeBaseIds),
+      skillIds: uniqueNumbers(selectedSkillIds),
+      mcpTools,
+      workflowBindings,
+    }
+  }
+
+  async function saveAgentSettings() {
+    if (!validateForm()) return
+    setSaving(true)
+    try {
+      const payload = buildPayload()
+      if (agent) {
+        await updateAIAgent({ id: agent.id, ...payload })
+        toast.success(
+          agent.publishedRevisionId > 0
+            ? t("aiAgent.savedActiveNote")
+            : t("aiAgent.savedNote"),
+        )
+      } else {
+        const created = await createAIAgent(payload)
+        setCurrentAgentId(created.id)
+        setAgent(created)
+        toast.success(t("aiAgent.createdNote"))
+        onAgentCreated?.(created)
+      }
+      onAgentSaved?.()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("aiAgent.saveFailed"))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function publishAgent() {
+    if (!agent) return
+    if (!validateForm()) return
+    setSaving(true)
+    try {
+      const payload = buildPayload()
+      await updateAIAgent({ id: agent.id, ...payload })
+      await publishAIAgent(agent.id)
+      await refreshAgentPublicationState(agent.id)
+      toast.success(t("aiAgent.publishedSuccess"))
+      onAgentSaved?.()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("aiAgent.publishFailed"))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function rollbackAgentRevision(revisionId: number) {
+    if (!agent || revisionId <= 0 || revisionId === agent.publishedRevisionId) return
+    setSaving(true)
+    try {
+      await rollbackAIAgent(agent.id, revisionId)
+      toast.success(t("aiAgent.rollbackSuccess"))
+      await refreshAgentPublicationState(agent.id)
+      onAgentSaved?.()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("aiAgent.rollbackFailed"))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const agentPublished = (agent?.publishedRevisionId ?? 0) > 0
+
+  const sections: {
+    key: SectionKey
+    title: string
+    icon: ReactNode
+  }[] = [
+    { key: "setup", title: t("aiAgent.sectionSetup"), icon: <SettingsIcon /> },
+    { key: "persona", title: t("aiAgent.sectionPersona"), icon: <MessageSquareTextIcon /> },
+    { key: "capability", title: t("aiAgent.sectionCapability"), icon: <PlugIcon /> },
+    { key: "service", title: t("aiAgent.sectionService"), icon: <UserRoundCheckIcon /> },
+  ]
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+        {t("common.loading")}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
+      <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b px-5">
+        <div className="flex min-w-0 items-center gap-3">
+          {/* <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/5 text-primary">
+            <BotMessageSquareIcon className="size-5" />
+          </div> */}
+          <div className="flex min-w-0 items-center gap-2">
+            <h1 className="truncate text-base font-semibold">{agent?.name || t("aiAgent.new")}</h1>
+            {agent?.statusName ? <Badge variant="secondary">{agent.statusName}</Badge> : null}
+            <Badge variant={agentPublished ? "default" : "outline"}>
+              {agentPublished ? t("aiAgent.published") : agent ? t("aiAgent.unpublished") : t("aiAgent.notCreated")}
+            </Badge>
+          </div>
+          {agent ? (
+            <Button type="button" variant="link" onClick={() => setVersionDialogOpen(true)}>
+              <HistoryIcon />
+              {t("aiAgent.versionHistory")}
+            </Button>
+          ) : null}
+        </div>
+      </header>
+      <div className="flex min-h-0 flex-1">
+        <aside className="hidden w-64 shrink-0 flex-col border-r bg-muted/20 p-4 md:flex">
+          <div className="px-3 pb-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+            {t("aiAgent.columnAiConfig")}
+          </div>
+          <nav className="space-y-1">
+            {sections.map((section, index) => (
+              <button
+                key={section.key}
+                type="button"
+                onClick={() => setActiveSection(section.key)}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+                  activeSection === section.key
+                    ? "bg-primary/5 font-medium text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted [&>svg]:size-4",
+                    activeSection === section.key && "bg-background text-primary shadow-sm",
+                  )}
+                >
+                  {section.icon}
+                </span>
+                <span className="flex-1">{section.title}</span>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+              </button>
+            ))}
+          </nav>
+          <div className="mt-auto flex items-center justify-between rounded-lg border bg-background p-3 text-xs">
+            <span className="text-muted-foreground">{t("common.status")}</span>
+            <span className={agentPublished ? "font-medium text-emerald-600" : "font-medium text-amber-600"}>
+              {agentPublished ? t("aiAgent.published") : agent ? t("aiAgent.unpublished") : t("aiAgent.notCreated")}
+            </span>
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1 overflow-y-auto bg-background">
+          <div className="mx-auto w-full max-w-4xl p-5 sm:p-8">
+            {activeSection === "setup" ? (
+              <div className="space-y-10">
+                <FormSection
+                  title={t("aiAgent.sectionBasic")}
+                  description={t("aiAgent.basicDescription")}
+                >
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <FieldBlock label={t("aiAgent.name")} required>
+                      <Input value={name} onChange={(event) => setName(event.target.value)} />
+                    </FieldBlock>
+                    <FieldBlock label={t("aiAgent.columnServiceMode")}>
+                      <OptionCombobox
+                        value={serviceMode}
+                        options={serviceModeOptions}
+                        placeholder={t("aiAgent.selectServiceMode")}
+                        onChange={setServiceMode}
+                      />
+                    </FieldBlock>
+                    <FieldBlock label={t("aiAgent.description")} className="md:col-span-2">
+                      <Textarea
+                        rows={4}
+                        value={description}
+                        onChange={(event) => setDescription(event.target.value)}
+                      />
+                    </FieldBlock>
+                  </div>
+                </FormSection>
+
+                <FormSection
+                  title={t("aiAgent.sectionModel")}
+                  description={t("aiAgent.modelDescription")}
+                >
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <FieldBlock label={t("aiAgent.aiConfig")} required>
+                      <OptionCombobox
+                        value={aiConfigId}
+                        options={aiConfigOptions}
+                        placeholder={t("aiAgent.selectAiConfig")}
+                        searchPlaceholder={t("aiAgent.searchAiConfig")}
+                        emptyText={t("aiAgent.emptyAiConfig")}
+                        onChange={setAIConfigId}
+                      />
+                    </FieldBlock>
+                    <FieldBlock label={t("aiAgent.replyTimeout")}>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          min={0}
+                          step={1}
+                          className="pr-12"
+                          value={replyTimeoutSeconds}
+                          onChange={(event) => setReplyTimeoutSeconds(event.target.value)}
+                        />
+                        <span className="pointer-events-none absolute top-2.5 right-3 text-sm text-muted-foreground">
+                          {t("aiAgent.seconds")}
+                        </span>
+                      </div>
+                    </FieldBlock>
+                  </div>
+                </FormSection>
+              </div>
+            ) : null}
+
+            {activeSection === "persona" ? (
+              <div className="space-y-10">
+                <FormSection
+                  title={t("aiAgent.sectionRole")}
+                  description={t("aiAgent.personaDescription")}
+                >
+                  <ContentEditor
+                    value={{ mode: "markdown", raw: systemPrompt }}
+                    allowedModes={["markdown"]}
+                    height={360}
+                    onChange={(next) => setSystemPrompt(next.raw)}
+                  />
+                </FormSection>
+                <FormSection
+                  title={t("aiAgent.sectionGreeting")}
+                  description={t("aiAgent.greetingDescription")}
+                >
+                  <Textarea
+                    rows={5}
+                    value={welcomeMessage}
+                    onChange={(event) => setWelcomeMessage(event.target.value)}
+                  />
+                </FormSection>
+              </div>
+            ) : null}
+
+            {activeSection === "capability" ? (
+              <div className="space-y-10">
+                <FormSection
+                  title={t("aiAgent.sectionKnowledge")}
+                  description={t("aiAgent.knowledgeDescription")}
+                >
+                  <OptionCombobox
+                    multiple
+                    values={selectedKnowledgeBaseIds.map(String)}
+                    options={knowledgeBaseOptions}
+                    placeholder={t("aiAgent.selectKnowledge")}
+                    emptyText={t("aiAgent.emptyKnowledge")}
+                    onValuesChange={(values) =>
+                      setSelectedKnowledgeBaseIds(values.map(Number))
+                    }
+                  />
+                </FormSection>
+
+                <FormSection
+                  title={t("aiAgent.sectionSkill")}
+                  description={t("aiAgent.skillDescription")}
+                >
+                  <OptionCombobox
+                    multiple
+                    values={selectedSkillIds.map(String)}
+                    options={skillOptions}
+                    placeholder={t("aiAgent.selectSkill")}
+                    emptyText={t("aiAgent.emptySkill")}
+                    onValuesChange={(values) => setSelectedSkillIds(values.map(Number))}
+                  />
+                </FormSection>
+
+                <FormSection
+                  title={t("aiAgent.sectionWorkflow")}
+                  description={t("aiAgent.workflowDescription")}
+                >
+                  <OptionCombobox
+                    multiple
+                    values={workflowBindings.map((binding) =>
+                      String(binding.workflowVersionId),
+                    )}
+                    options={workflowOptions}
+                    placeholder={t("aiAgent.selectWorkflow")}
+                    emptyText={t("aiAgent.emptyWorkflow")}
+                    onValuesChange={setWorkflowSelection}
+                  />
+                </FormSection>
+
+                <FormSection
+                  title={t("aiAgent.sectionMcp")}
+                  description={t("aiAgent.mcpDescription")}
+                >
+                  <OptionCombobox
+                    multiple
+                    values={mcpTools.map((tool) => tool.toolCode)}
+                    options={mcpToolOptions}
+                    placeholder={t("aiAgent.selectMCPTool")}
+                    emptyText={t("aiAgent.emptyMCPTool")}
+                    onValuesChange={setMCPToolSelection}
+                  />
+                  {mcpTools.length > 0 ? (
+                    <div className="space-y-2">
+                      {mcpTools.map((tool) => {
+                        const catalogTool = toolCatalog.find(
+                          (item) => item.toolCode === tool.toolCode,
+                        )
+                        return (
+                          <div
+                            key={tool.toolCode}
+                            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2"
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-medium">
+                                {tool.title || tool.toolCode}
+                              </div>
+                              <div className="truncate font-mono text-xs text-muted-foreground">
+                                {tool.toolCode}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {catalogTool && !catalogTool.riskEditable ? (
+                                <Badge variant="secondary">
+                                  {tool.riskLevel === "read"
+                                    ? `${t("aiAgent.readOnly")} (${t("aiAgent.systemDefined")})`
+                                    : `${t("aiAgent.writeAction")} (${t("aiAgent.systemDefined")})`}
+                                </Badge>
+                              ) : (
+                                <>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={
+                                      tool.riskLevel === "read" ? "default" : "outline"
+                                    }
+                                    onClick={() =>
+                                      setMCPTools((items) =>
+                                        items.map((item) =>
+                                          item.toolCode === tool.toolCode
+                                            ? {
+                                                ...item,
+                                                riskLevel: "read",
+                                                requireConfirmation: false,
+                                              }
+                                            : item,
+                                        ),
+                                      )
+                                    }
+                                  >
+                                    {t("aiAgent.readOnly")}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={
+                                      tool.riskLevel === "write"
+                                        ? "destructive"
+                                        : "outline"
+                                    }
+                                    onClick={() =>
+                                      setMCPTools((items) =>
+                                        items.map((item) =>
+                                          item.toolCode === tool.toolCode
+                                            ? {
+                                                ...item,
+                                                riskLevel: "write",
+                                                requireConfirmation: true,
+                                              }
+                                            : item,
+                                        ),
+                                      )
+                                    }
+                                  >
+                                    {t("aiAgent.writeAction")}
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : null}
+                </FormSection>
+              </div>
+            ) : null}
+
+            {activeSection === "service" ? (
+              <div className="space-y-10">
+                <FormSection
+                  title={t("aiAgent.sectionHandoff")}
+                  description={t("aiAgent.handoffDescription")}
+                >
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <FieldBlock label={t("aiAgent.handoffMode")}>
+                      <OptionCombobox
+                        value={handoffMode}
+                        options={handoffModeOptions}
+                        placeholder={t("aiAgent.selectHandoffMode")}
+                        onChange={setHandoffMode}
+                      />
+                    </FieldBlock>
+                    <FieldBlock label={t("aiAgent.teams")}>
+                      <div className="flex gap-2">
+                        <div className="min-w-0 flex-1">
+                          <OptionCombobox
+                            value={teamToAdd}
+                            options={teamOptions.filter(
+                              (option) =>
+                                !selectedTeamIds.includes(Number(option.value)),
+                            )}
+                            placeholder={t("aiAgent.selectTeam")}
+                            onChange={setTeamToAdd}
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={!teamToAdd}
+                          onClick={() => {
+                            addSelected(teamToAdd, selectedTeamIds, setSelectedTeamIds)
+                            setTeamToAdd("")
+                          }}
+                        >
+                          {t("aiAgent.add")}
+                        </Button>
+                      </div>
+                    </FieldBlock>
+                  </div>
+                  <BadgeList
+                    empty={t("aiAgent.noTeams")}
+                    items={selectedOptions(selectedTeamIds, teamOptions)}
+                    onRemove={(id) =>
+                      setSelectedTeamIds((current) =>
+                        current.filter((item) => item !== id),
+                      )
+                    }
+                  />
+                </FormSection>
+
+                <FormSection
+                  title={t("aiAgent.sectionFallback")}
+                  description={t("aiAgent.fallbackDescription")}
+                >
+                  <FieldBlock label={t("aiAgent.fallbackMode")}>
+                    <OptionCombobox
+                      value={fallbackMode}
+                      options={fallbackModeOptions}
+                      placeholder={t("aiAgent.selectFallbackMode")}
+                      onChange={setFallbackMode}
+                    />
+                  </FieldBlock>
+                  <FieldBlock label={t("aiAgent.fallbackMessage")}>
+                    <Textarea
+                      rows={5}
+                      value={fallbackMessage}
+                      onChange={(event) => setFallbackMessage(event.target.value)}
+                    />
+                  </FieldBlock>
+                </FormSection>
+              </div>
+            ) : null}
+          </div>
+        </main>
+      </div>
+
+      <footer className="flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 border-t bg-background px-5 py-3">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span
+            className={cn(
+              "size-2 rounded-full",
+              agentPublished ? "bg-emerald-500" : "bg-amber-500",
+            )}
+          />
+          <span>
+            {agentPublished
+              ? t("aiAgent.publishedNote")
+              : t("aiAgent.unpublishedNote")}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            {t("common.cancel")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={saving}
+            onClick={saveAgentSettings}
+          >
+            <SaveIcon />
+            {t("aiAgent.saveConfig")}
+          </Button>
+          {agent ? (
+            <Button type="button" disabled={saving} onClick={publishAgent}>
+              {t("aiAgent.publishAgent")}
+            </Button>
+          ) : null}
+        </div>
+      </footer>
+
+      <ProjectDialog
+        open={versionDialogOpen}
+        onOpenChange={setVersionDialogOpen}
+        title={t("aiAgent.versionHistory")}
+        size="xl"
+      >
+        <VersionRecordsTable
+          agent={agent}
+          agentRevisions={agentRevisions}
+          onRollback={rollbackAgentRevision}
+          rollbackDisabled={saving}
+        />
+      </ProjectDialog>
+    </div>
+  )
+}
+
+function FormSection({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string
+  description: string
+  action?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <section className="space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="relative pl-3 text-[15px] font-semibold text-foreground before:absolute before:top-1 before:left-0 before:h-4 before:w-0.5 before:rounded-full before:bg-primary">
+            {title}
+          </h2>
+          <p className="mt-1 pl-3 text-xs leading-5 text-muted-foreground">{description}</p>
+        </div>
+        {action}
+      </div>
+      <div className="space-y-4">{children}</div>
+    </section>
+  )
+}
+
+function FieldBlock({
+  label,
+  required,
+  className,
+  children,
+}: {
+  label: string
+  required?: boolean
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <div className={cn("space-y-2", className)}>
+      <Label>
+        {label}
+        {required ? <span className="ml-1 text-destructive">*</span> : null}
+      </Label>
+      {children}
+    </div>
+  )
+}
+
+function BadgeList({
+  empty,
+  items,
+  onRemove,
+}: {
+  empty: string
+  items: { value: string; label: string }[]
+  onRemove: (id: number) => void
+}) {
+  if (items.length === 0) {
+    return <div className="text-sm text-muted-foreground">{empty}</div>
+  }
+  return (
+    <div className="flex flex-wrap gap-2">
+      {items.map((item) => (
+        <Badge key={item.value} variant="secondary" className="gap-1 pr-1">
+          {item.label}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-5"
+            onClick={() => onRemove(Number(item.value))}
+          >
+            <Trash2Icon className="size-3" />
+          </Button>
+        </Badge>
+      ))}
+    </div>
+  )
+}
+
+function VersionRecordsTable({
+  agent,
+  agentRevisions,
+  onRollback,
+  rollbackDisabled,
+}: {
+  agent: AIAgent | null
+  agentRevisions: AgentRevision[]
+  onRollback: (revisionId: number) => void
+  rollbackDisabled: boolean
+}) {
+  const t = useI18n()
+
+  return (
+    <div className="max-h-[60vh] overflow-auto rounded-md border">
+      {agentRevisions.length > 0 ? (
+        <Table>
+          <TableHeader className="bg-muted/40">
+            <TableRow>
+              <TableHead className="w-28">{t("aiAgent.versionHistory")}</TableHead>
+              <TableHead>{t("common.name")}</TableHead>
+              <TableHead>{t("common.status")}</TableHead>
+              <TableHead>{t("aiAgent.description")}</TableHead>
+              <TableHead className="text-right">{t("aiAgent.columnActions")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {agentRevisions.map((revision) => {
+              const active = agent?.publishedRevisionId === revision.id
+              return (
+                <TableRow key={revision.id}>
+                  <TableCell className="font-medium">
+                    r{revision.revision}
+                    {active ? (
+                      <Badge variant="secondary" className="ml-2">
+                        {t("aiAgent.activeRevision")}
+                      </Badge>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {revision.publishedAt || "-"}
+                  </TableCell>
+                  <TableCell>{revision.publishedByName || "-"}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {revision.definitionHash?.slice(0, 12) || "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={active || rollbackDisabled}
+                      onClick={() => onRollback(revision.id)}
+                    >
+                      {t("aiAgent.rollback")}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+      ) : (
+        <div className="p-5 text-sm text-muted-foreground">{t("aiAgent.noRevisions")}</div>
+      )}
+    </div>
+  )
+}
