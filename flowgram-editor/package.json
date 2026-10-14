@@ -55,6 +55,19 @@
     "@flowgram.ai/eslint-config": "1.0.12",
     "@flowgram.ai/ts-config": "1.0.12"
   },
+  "pnpm": {
+    "overrides": {
+      "@tiptap/core@<3.30.5": "3.30.5",
+      "@tiptap/pm@<3.30.5": "3.30.5",
+      "@vue/server-renderer@<3.5.42": "3.5.42",
+      "js-yaml@>=4.0.0 <4.3.2": "4.3.2",
+      "nanoid@<3.3.18": "3.3.18",
+      "prosemirror-view@<1.42.3": "1.42.3",
+      "source-map-js@<1.2.2": "1.2.2",
+      "brace-expansion@<1.1.21": "1.1.21",
+      "brace-expansion@>=4.0.0 <5.0.12": "5.0.12"
+    }
+  },
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"

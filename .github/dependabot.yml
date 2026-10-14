@@ -1,0 +1,124 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      web-runtime-security:
+        applies-to: security-updates
+        dependency-type: production
+        patterns: ["*"]
+      web-development-security:
+        applies-to: security-updates
+        dependency-type: development
+        patterns: ["*"]
+      web-runtime-nonbreaking:
+        applies-to: version-updates
+        dependency-type: production
+        update-types: ["minor", "patch"]
+        patterns: ["*"]
+      web-development-nonbreaking:
+        applies-to: version-updates
+        dependency-type: development
+        update-types: ["minor", "patch"]
+        patterns: ["*"]
+      web-major:
+        applies-to: version-updates
+        update-types: ["major"]
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /flowgram-editor
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      flowgram-runtime-security:
+        applies-to: security-updates
+        dependency-type: production
+        patterns: ["*"]
+      flowgram-development-security:
+        applies-to: security-updates
+        dependency-type: development
+        patterns: ["*"]
+      flowgram-runtime-nonbreaking:
+        applies-to: version-updates
+        dependency-type: production
+        update-types: ["minor", "patch"]
+        patterns: ["*"]
+      flowgram-development-nonbreaking:
+        applies-to: version-updates
+        dependency-type: development
+        update-types: ["minor", "patch"]
+        patterns: ["*"]
+      flowgram-major:
+        applies-to: version-updates
+        update-types: ["major"]
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /scripts/cloudflare-email-worker
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      worker-runtime-security:
+        applies-to: security-updates
+        dependency-type: production
+        patterns: ["*"]
+      worker-development-security:
+        applies-to: security-updates
+        dependency-type: development
+        patterns: ["*"]
+      worker-runtime-nonbreaking:
+        applies-to: version-updates
+        dependency-type: production
+        update-types: ["minor", "patch"]
+        patterns: ["*"]
+      worker-development-nonbreaking:
+        applies-to: version-updates
+        dependency-type: development
+        update-types: ["minor", "patch"]
+        patterns: ["*"]
+      worker-major:
+        applies-to: version-updates
+        update-types: ["major"]
+        patterns: ["*"]
+
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      go-security:
+        applies-to: security-updates
+        patterns: ["*"]
+      go-nonbreaking:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+        patterns: ["*"]
+      go-major:
+        applies-to: version-updates
+        update-types: ["major"]
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      actions-security:
+        applies-to: security-updates
+        patterns: ["*"]
+      actions-nonbreaking:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+        patterns: ["*"]
+      actions-major:
+        applies-to: version-updates
+        update-types: ["major"]
+        patterns: ["*"]
