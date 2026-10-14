@@ -1,0 +1,86 @@
+vars: { d2-config: { layout-engine: tala } }
+direction: right
+style.font-size: 16
+style.font-color: "#1E293B"
+
+entry: "Customer → channel\n→ customer session" {
+  left: 0
+  top: 150
+  width: 180
+  height: 140
+  label.near: center-center
+  style.fill: "#F1F5F9"
+  style.stroke: "#64748B"
+}
+runtime: "Conversation\nAgent / Workflow runtime" {
+  left: 220
+  top: 150
+  width: 190
+  height: 140
+  label.near: center-center
+  style.fill: "#DBEAFE"
+  style.stroke: "#2563EB"
+}
+retrieval: "Retrieval\nenabled?" {
+  left: 455
+  top: 155
+  width: 140
+  height: 130
+  label.near: center-center
+  shape: diamond
+  style.fill: "#EDE9FE"
+  style.stroke: "#7C3AED"
+}
+llm: "LLM + tool loop\nMCP tools when\nconfigured" {
+  left: 660
+  top: 150
+  width: 190
+  height: 140
+  label.near: center-center
+  style.fill: "#CCFBF1"
+  style.stroke: "#0F766E"
+}
+completion: "Persisted assistant message\nRealtime WebSocket event\n→ customer" {
+  left: 900
+  top: 150
+  width: 220
+  height: 140
+  label.near: center-center
+  style.fill: "#DBEAFE"
+  style.stroke: "#2563EB"
+}
+
+embedding: "Query embedding" {
+  left: 455
+  top: 365
+  width: 160
+  height: 110
+  label.near: center-center
+  style.fill: "#CCFBF1"
+  style.stroke: "#0F766E"
+}
+vector: "Qdrant · default\nLanceDB · optional" {
+  left: 660
+  top: 365
+  width: 175
+  height: 110
+  label.near: center-center
+  style.fill: "#EDE9FE"
+  style.stroke: "#7C3AED"
+}
+evidence: "Filtered evidence" {
+  left: 880
+  top: 365
+  width: 165
+  height: 110
+  label.near: center-center
+  style.fill: "#EDE9FE"
+  style.stroke: "#7C3AED"
+}
+
+entry -> runtime
+runtime -> retrieval
+retrieval -> llm: "No"
+retrieval -> embedding: "Yes"
+embedding -> vector -> evidence -> llm
+llm -> completion

@@ -89,69 +89,36 @@ These are implementation details, not a security certification or an independent
 
 The browser is an untrusted client. The Go server verifies customer proof, employee sessions, permissions, and realtime authorization before services access application data or emit protected events. The bundled Next.js/React interface and embedded Web SDK call the Go application over HTTP and WebSocket APIs.
 
-```mermaid
-flowchart TB
-  subgraph Clients[Client-controlled browsers]
-    customer[Customer browser / embedded Web SDK]
-    employee[Employee / Admin browser]
-    ui[Next.js / React interface]
-    employee --> ui
-  end
+<p align="center">
+  <picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/kestreldesk-architecture-mobile.svg">
+    <img src="docs/assets/kestreldesk-architecture.svg" alt="KestrelDesk architecture: clients, server trust boundary, data, AI and external services, and channel integrations">
+  </picture>
+</p>
 
-  subgraph App[KestrelDesk server trust boundary]
-    server[Go / Gin HTTP server]
-    api[REST and WebSocket APIs]
-    services[Go services and AI runtime]
-    server --> api --> services
-  end
+The Structurizr DSL is the architecture model; D2 maintains the landscape README layout because the current Structurizr toolchain does not export D2. Editable sources are in [docs/diagrams](docs/diagrams/). See [the architecture notes](docs/engineering/architecture.md) for the code map and trust boundaries.
 
-  customer -->|HTTPS / REST / WSS| api
-  ui -->|HTTPS / REST / WSS| api
-
-  services --> data[MySQL / Qdrant / optional LanceDB]
-  services --> integrations[LLM / embeddings / SMTP / file and object storage / channel adapters / MCP]
-```
-
-The default Compose deployment uses KestrelDesk, MySQL, and Qdrant. LanceDB is optional. Operators provide external model, email, channel, and storage configuration as needed. See [the architecture notes](docs/engineering/architecture.md) for the code map and trust boundaries.
+The default Compose deployment uses KestrelDesk, MySQL, and Qdrant. LanceDB is optional. Operators provide external model, email, channel, and storage configuration as needed.
 
 ### AI and RAG request flow
 
-```mermaid
-flowchart TB
-  browser[Customer browser / channel] --> config[Configured channel]
-  config --> exchange[Customer session exchange]
-  exchange --> conversation[Conversation]
-  conversation --> send[Message send]
-  send --> runtime[Agent / Workflow runtime]
-  runtime --> decision{Retrieval configured?}
-  decision -->|No| llm[LLM and tool loop]
-  decision -->|Yes| embedding[Query embedding]
-  embedding --> vector[(Qdrant / optional LanceDB)]
-  vector --> evidence[Filtered evidence]
-  evidence --> llm
-  llm --> reply[Assistant message]
-  reply --> realtime[Realtime update]
-  realtime --> browser
-```
+<p align="center">
+  <picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/rag-flow-mobile.svg">
+    <img src="docs/assets/rag-flow.svg" alt="Conditional AI and RAG request flow">
+  </picture>
+</p>
 
 Retrieval is conditional on Agent/Workflow configuration. A configured path can embed the query, search the selected vector store, pass eligible evidence into the model/tool loop, persist the message, and send a realtime update. See [RAG and Answerability](docs/engineering/rag-pipeline.md).
 
 ### Human handoff
 
-```mermaid
-flowchart TB
-  customer[Customer] --> agent[AI Agent]
-  agent --> request[Handoff request]
-  request --> checks[Business and team checks]
-  checks --> confirmation[Confirmation where applicable]
-  confirmation --> route{Assignment or queue}
-  route --> assigned[Assigned employee]
-  route --> queued[Employee queue]
-  assigned --> workspace[Employee workspace]
-  queued --> workspace
-  workspace --> reply[Employee reply]
-  reply --> customer
-```
+<p align="center">
+  <picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/human-handoff-mobile.svg">
+    <img src="docs/assets/human-handoff.svg" alt="Human handoff flow">
+  </picture>
+</p>
 
 The end-to-end human handoff experience remains **partially validated**. This diagram describes the intended implemented path; it does not claim that every dispatch, capacity, routing, or lifecycle case is fully validated.
 
@@ -361,69 +328,36 @@ KestrelDesk 将客户支持入口和员工工作台整合在同一应用中，�
 
 浏览器属于不可信客户端。Go 服务端会在访问应用数据或发送受保护事件前，验证客户身份凭证、员工会话、权限和实时授权。Next.js/React 界面与嵌入式 Web SDK 通过 HTTP 和 WebSocket API 调用 Go 应用。
 
-```mermaid
-flowchart TB
-  subgraph Clients[客户端浏览器]
-    customer[客户浏览器 / 嵌入式 Web SDK]
-    employee[员工 / 管理员浏览器]
-    ui[Next.js / React 界面]
-    employee --> ui
-  end
+<p align="center">
+  <picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/kestreldesk-architecture-mobile.svg">
+    <img src="docs/assets/kestreldesk-architecture.svg" alt="KestrelDesk 架构：客户端、服务端信任边界、数据、AI 与外部服务、渠道集成">
+  </picture>
+</p>
 
-  subgraph App[KestrelDesk 服务端信任边界]
-    server[Go / Gin HTTP 服务]
-    api[REST 和 WebSocket API]
-    services[Go 服务与 AI 运行时]
-    server --> api --> services
-  end
+采用 TALA 横向容器布局。架构模型维护在 Structurizr DSL，README 图的视觉布局维护在 D2；可编辑源文件见[docs/diagrams](docs/diagrams/)，代码结构与信任边界详见[架构说明](docs/engineering/architecture.md)。
 
-  customer -->|HTTPS / REST / WSS| api
-  ui -->|HTTPS / REST / WSS| api
-
-  services --> data[MySQL / Qdrant / 可选 LanceDB]
-  services --> integrations[LLM / 嵌入模型 / SMTP / 文件与对象存储 / 渠道适配器 / MCP]
-```
-
-默认 Compose 部署由 KestrelDesk、MySQL 和 Qdrant 组成；LanceDB 为可选配置。模型、邮件、渠道和存储服务按需配置。代码结构和信任边界见[架构说明](docs/engineering/architecture.md)。
+默认 Compose 部署由 KestrelDesk、MySQL 和 Qdrant 组成；LanceDB 为可选配置。模型、邮件、渠道和存储服务按需配置。
 
 ### AI 与 RAG 请求流程
 
-```mermaid
-flowchart TB
-  browser[客户浏览器 / 渠道] --> config[已配置渠道]
-  config --> exchange[客户会话交换]
-  exchange --> conversation[会话]
-  conversation --> send[发送消息]
-  send --> runtime[Agent / Workflow 运行时]
-  runtime --> decision{是否配置了检索？}
-  decision -->|否| llm[LLM 与工具循环]
-  decision -->|是| embedding[查询向量化]
-  embedding --> vector[(Qdrant / 可选 LanceDB)]
-  vector --> evidence[过滤后的证据]
-  evidence --> llm
-  llm --> reply[AI 回复]
-  reply --> realtime[实时更新]
-  realtime --> browser
-```
+<p align="center">
+  <picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/rag-flow-mobile.svg">
+    <img src="docs/assets/rag-flow.svg" alt="按配置启用的 AI 与 RAG 请求流程">
+  </picture>
+</p>
 
 是否检索由 Agent/Workflow 配置决定。启用检索时，流程可以对查询生成向量、检索选定向量库、将符合条件的证据传给模型/工具循环、保存消息并发送实时更新。详见 [RAG 与 Answerability](docs/engineering/rag-pipeline.md)。
 
 ### 人工转接
 
-```mermaid
-flowchart TB
-  customer[客户] --> agent[AI Agent]
-  agent --> request[转人工请求]
-  request --> checks[业务与团队检查]
-  checks --> confirmation[必要时确认]
-  confirmation --> route{分配或进入队列}
-  route --> assigned[已分配客服]
-  route --> queued[客服队列]
-  assigned --> workspace[员工工作台]
-  queued --> workspace
-  workspace --> reply[客服回复]
-  reply --> customer
-```
+<p align="center">
+  <picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/human-handoff-mobile.svg">
+    <img src="docs/assets/human-handoff.svg" alt="人工转接流程">
+  </picture>
+</p>
 
 当前端到端人工转接体验仍为**部分验证**。图中概括已实现路径，不表示派发、容量、路由和生命周期的所有场景均已完整验证。
 

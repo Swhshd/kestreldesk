@@ -1,0 +1,104 @@
+vars: { d2-config: { layout-engine: tala } }
+direction: right
+style.font-size: 16
+style.font-color: "#1E293B"
+
+customer: "Customer" {
+  left: 0
+  top: 150
+  width: 110
+  height: 95
+  label.near: center-center
+  style.fill: "#F1F5F9"
+  style.stroke: "#64748B"
+}
+agent: "AI agent" {
+  left: 135
+  top: 150
+  width: 110
+  height: 95
+  label.near: center-center
+  style.fill: "#DBEAFE"
+  style.stroke: "#2563EB"
+}
+request: "Handoff request" {
+  left: 270
+  top: 150
+  width: 130
+  height: 100
+  label.near: center-center
+  style.fill: "#DBEAFE"
+  style.stroke: "#2563EB"
+}
+checks: "Business + team\nchecks" {
+  left: 430
+  top: 150
+  width: 140
+  height: 100
+  label.near: center-center
+  style.fill: "#EFF6FF"
+  style.stroke: "#2563EB"
+}
+confirmation: "Optional\nconfirmation" {
+  left: 430
+  top: 300
+  width: 140
+  height: 95
+  label.near: center-center
+  style.fill: "#FFFBEB"
+  style.stroke: "#B45309"
+  style.stroke-dash: 5
+}
+route: "Assignment?" {
+  left: 610
+  top: 150
+  width: 125
+  height: 120
+  label.near: center-center
+  shape: diamond
+  style.fill: "#EDE9FE"
+  style.stroke: "#7C3AED"
+}
+assigned: "Assigned\nemployee" {
+  left: 775
+  top: 60
+  width: 135
+  height: 100
+  label.near: center-center
+  style.fill: "#F5F3FF"
+  style.stroke: "#7C3AED"
+}
+queue: "Team queue" {
+  left: 775
+  top: 300
+  width: 135
+  height: 100
+  label.near: center-center
+  style.fill: "#F5F3FF"
+  style.stroke: "#7C3AED"
+}
+workspace: "Employee\nworkspace\nEmployee reply\n→ customer" {
+  left: 945
+  top: 150
+  width: 190
+  height: 120
+  label.near: center-center
+  style.fill: "#DBEAFE"
+  style.stroke: "#2563EB"
+}
+status: "Current end-to-end handoff remains partially validated." {
+  left: 930
+  top: 365
+  shape: text
+  style.font-size: 13
+  style.font-color: "#64748B"
+}
+
+customer -> agent -> request -> checks
+checks -> route
+checks -> confirmation: "If needed" { style.stroke-dash: 5 }
+confirmation -> route
+route -> assigned: "Assigned"
+route -> queue: "Queued"
+assigned -> workspace
+queue -> workspace

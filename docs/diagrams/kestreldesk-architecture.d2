@@ -1,0 +1,86 @@
+# Visual layout companion to kestreldesk-architecture.dsl; keep architecture facts aligned.
+vars: { d2-config: { layout-engine: tala } }
+direction: right
+style.font-size: 15
+style.font-color: "#1E293B"
+
+clients: "CLIENTS" {
+  left: 0
+  top: 30
+  width: 250
+  height: 200
+  label.near: top-center
+  style.font-size: 13
+  style.stroke: "#64748B"
+  style.fill: "#F1F5F9"
+  browser: "Customer / employee\nbrowser clients\nNext.js · React ·\nTypeScript · Embedded SDK"
+  browser.style.fill: "#E2E8F0"
+  browser.style.stroke: "#64748B"
+  browser.style.font-size: 14
+}
+
+core: "KESTRELDESK SERVER TRUST BOUNDARY" {
+  left: 360
+  top: 30
+  width: 320
+  height: 240
+  label.near: top-center
+  style.font-size: 13
+  style.stroke: "#2563EB"
+  style.stroke-width: 2
+  style.fill: "#EFF6FF"
+  app: "Go · Gin · GORM\nREST · WebSocket APIs\nAI runtime"
+  app.style.fill: "#DBEAFE"
+  app.style.stroke: "#2563EB"
+  app.style.font-size: 15
+}
+
+data: "DATA" {
+  left: 760
+  top: 30
+  width: 270
+  height: 190
+  label.near: top-center
+  style.font-size: 13
+  style.stroke: "#7C3AED"
+  style.fill: "#F5F3FF"
+  store: "MySQL · default\nSQLite · supported\nQdrant · default vector\nLanceDB · optional vector"
+  store.style.fill: "#EDE9FE"
+  store.style.stroke: "#7C3AED"
+  store.style.font-size: 13
+}
+
+external: "AI / EXTERNAL" {
+  left: 360
+  top: 390
+  width: 320
+  height: 190
+  label.near: top-center
+  style.font-size: 13
+  style.stroke: "#0F766E"
+  style.fill: "#F0FDFA"
+  providers: "LLM · embedding providers\nSMTP · email\nLocal / OSS storage"
+  providers.style.fill: "#CCFBF1"
+  providers.style.stroke: "#0F766E"
+  providers.style.font-size: 14
+}
+
+channels: "CHANNELS / INTEGRATIONS" {
+  left: 760
+  top: 390
+  width: 270
+  height: 190
+  label.near: top-center
+  style.font-size: 13
+  style.stroke: "#B45309"
+  style.fill: "#FFFBEB"
+  adapters: "Web · WeChat · WeCom\nTelegram · Slack · Discord\nLark · Zalo · MCP tools"
+  adapters.style.fill: "#FEF3C7"
+  adapters.style.stroke: "#B45309"
+  adapters.style.font-size: 13
+}
+
+clients.browser -> core.app
+core.app -> data.store
+core.app -> external
+core.app -> channels.adapters

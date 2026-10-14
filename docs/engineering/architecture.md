@@ -9,7 +9,7 @@ KestrelDesk provides an AI helpdesk with customer Web chat, an employee workspac
 | Layer | Current implementation | Responsibility |
 | --- | --- | --- |
 | Go server | Go 1.26, Gin, GORM, `github.com/mlogclub/simple` | Explicit routes, middleware, services, repositories |
-| Relational data | MySQL in the local demo; SQLite also supported | Customers, conversations, employees, login sessions, RBAC and knowledge metadata |
+| Relational data | MySQL is the default in the Compose demo; SQLite is supported. PostgreSQL is also available as a configured GORM driver in code. | Customers, conversations, employees, login sessions, RBAC and knowledge metadata |
 | Vector storage | Qdrant in the local demo | Knowledge chunk embeddings and filtered retrieval |
 | Chat | DeepSeek-compatible provider in the local demo | Responses grounded in retrieved evidence |
 | Embeddings | BAAI/bge-m3 in the local demo | Query/document vectors; deployment configuration selects the provider |

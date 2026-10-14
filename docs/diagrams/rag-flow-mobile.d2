@@ -1,0 +1,102 @@
+vars: { d2-config: { layout-engine: tala } }
+direction: down
+style.font-color: "#1E293B"
+
+entry: "Customer → channel\n→ customer session" {
+  left: 100
+  top: 10
+  width: 190
+  height: 70
+  label.near: center-center
+  style.font-size: 11
+  style.fill: "#F1F5F9"
+  style.stroke: "#64748B"
+}
+runtime: "Conversation\nAgent / Workflow runtime" {
+  left: 100
+  top: 95
+  width: 190
+  height: 70
+  label.near: center-center
+  style.font-size: 11
+  style.fill: "#DBEAFE"
+  style.stroke: "#2563EB"
+}
+retrieval: "Retrieval enabled?" {
+  left: 120
+  top: 185
+  width: 150
+  height: 95
+  label.near: center-center
+  shape: diamond
+  style.font-size: 11
+  style.fill: "#EDE9FE"
+  style.stroke: "#7C3AED"
+}
+noRetrieval: "No retrieval" {
+  left: 8
+  top: 320
+  width: 150
+  height: 80
+  label.near: center-center
+  style.font-size: 11
+  style.fill: "#F1F5F9"
+  style.stroke: "#64748B"
+}
+embedding: "Query embedding" {
+  left: 230
+  top: 320
+  width: 150
+  height: 80
+  label.near: center-center
+  style.font-size: 11
+  style.fill: "#CCFBF1"
+  style.stroke: "#0F766E"
+}
+vector: "Qdrant · default\nLanceDB · optional" {
+  left: 230
+  top: 415
+  width: 150
+  height: 80
+  label.near: center-center
+  style.font-size: 11
+  style.fill: "#EDE9FE"
+  style.stroke: "#7C3AED"
+}
+evidence: "Filtered evidence" {
+  left: 230
+  top: 510
+  width: 150
+  height: 80
+  label.near: center-center
+  style.font-size: 11
+  style.fill: "#EDE9FE"
+  style.stroke: "#7C3AED"
+}
+llm: "LLM + tool loop\nMCP when configured" {
+  left: 8
+  top: 610
+  width: 170
+  height: 80
+  label.near: center-center
+  style.font-size: 11
+  style.fill: "#CCFBF1"
+  style.stroke: "#0F766E"
+}
+completion: "Persisted message\nRealtime event → customer" {
+  left: 205
+  top: 610
+  width: 175
+  height: 80
+  label.near: center-center
+  style.font-size: 11
+  style.fill: "#DBEAFE"
+  style.stroke: "#2563EB"
+}
+
+entry -> runtime -> retrieval
+retrieval -> noRetrieval: "No"
+retrieval -> embedding: "Yes"
+noRetrieval -> llm
+embedding -> vector -> evidence -> llm
+llm -> completion
