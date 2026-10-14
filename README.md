@@ -96,7 +96,7 @@ The browser is an untrusted client. The Go server verifies customer proof, emplo
   </picture>
 </p>
 
-The Structurizr DSL is the architecture model; D2 maintains the landscape README layout because the current Structurizr toolchain does not export D2. Editable sources are in [docs/diagrams](docs/diagrams/). See [the architecture notes](docs/engineering/architecture.md) for the code map and trust boundaries.
+The Structurizr DSL is the architecture model; D2 with TALA maintains the hand-tuned landscape README layout because the current Structurizr toolchain does not export D2. Editable sources are in [docs/diagrams](docs/diagrams/). See [the architecture notes](docs/engineering/architecture.md) for the code map and trust boundaries.
 
 The default Compose deployment uses KestrelDesk, MySQL, and Qdrant. LanceDB is optional. Operators provide external model, email, channel, and storage configuration as needed.
 
