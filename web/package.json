@@ -25,7 +25,7 @@
     "@tiptap/extension-underline": "3.30.4",
     "@tiptap/react": "^3.30.4",
     "@tiptap/starter-kit": "^3.30.4",
-    "@uiw/react-json-view": "2.0.0-alpha.41",
+    "@uiw/react-json-view": "2.0.0-alpha.44",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
