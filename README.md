@@ -90,7 +90,7 @@ These are implementation details, not a security certification or an independent
 The browser is an untrusted client. The Go server verifies customer proof, employee sessions, permissions, and realtime authorization before services access application data or emit protected events. The bundled Next.js/React interface and embedded Web SDK call the Go application over HTTP and WebSocket APIs.
 
 ```mermaid
-flowchart LR
+flowchart TB
   subgraph Clients[Client-controlled browsers]
     customer[Customer browser / embedded Web SDK]
     employee[Employee / Admin browser]
@@ -100,28 +100,16 @@ flowchart LR
 
   subgraph App[KestrelDesk server trust boundary]
     server[Go / Gin HTTP server]
-    rest[REST API]
-    ws[WebSocket API]
+    api[REST and WebSocket APIs]
     services[Go services and AI runtime]
-    server --> rest
-    server --> ws
-    rest --> services
-    ws --> services
+    server --> api --> services
   end
 
-  customer -->|HTTPS / REST| server
-  customer -->|WSS| ws
-  ui -->|HTTPS / REST| server
-  ui -->|WSS| ws
+  customer -->|HTTPS / REST / WSS| api
+  ui -->|HTTPS / REST / WSS| api
 
-  services --> mysql[(MySQL)]
-  services --> qdrant[(Qdrant)]
-  services -. optional .-> lance[(LanceDB)]
-  services --> models[LLM and embedding providers]
-  services --> smtp[SMTP delivery]
-  services --> storage[File / object storage]
-  services <--> channels[External channel adapters]
-  services <--> mcp[MCP servers and tools]
+  services --> data[MySQL / Qdrant / optional LanceDB]
+  services --> integrations[LLM / embeddings / SMTP / file and object storage / channel adapters / MCP]
 ```
 
 The default Compose deployment uses KestrelDesk, MySQL, and Qdrant. LanceDB is optional. Operators provide external model, email, channel, and storage configuration as needed. See [the architecture notes](docs/engineering/architecture.md) for the code map and trust boundaries.
@@ -129,7 +117,7 @@ The default Compose deployment uses KestrelDesk, MySQL, and Qdrant. LanceDB is o
 ### AI and RAG request flow
 
 ```mermaid
-flowchart LR
+flowchart TB
   browser[Customer browser / channel] --> config[Configured channel]
   config --> exchange[Customer session exchange]
   exchange --> conversation[Conversation]
@@ -151,7 +139,7 @@ Retrieval is conditional on Agent/Workflow configuration. A configured path can 
 ### Human handoff
 
 ```mermaid
-flowchart LR
+flowchart TB
   customer[Customer] --> agent[AI Agent]
   agent --> request[Handoff request]
   request --> checks[Business and team checks]
@@ -374,7 +362,7 @@ KestrelDesk 将客户支持入口和员工工作台整合在同一应用中，�
 浏览器属于不可信客户端。Go 服务端会在访问应用数据或发送受保护事件前，验证客户身份凭证、员工会话、权限和实时授权。Next.js/React 界面与嵌入式 Web SDK 通过 HTTP 和 WebSocket API 调用 Go 应用。
 
 ```mermaid
-flowchart LR
+flowchart TB
   subgraph Clients[客户端浏览器]
     customer[客户浏览器 / 嵌入式 Web SDK]
     employee[员工 / 管理员浏览器]
@@ -384,28 +372,16 @@ flowchart LR
 
   subgraph App[KestrelDesk 服务端信任边界]
     server[Go / Gin HTTP 服务]
-    rest[REST API]
-    ws[WebSocket API]
+    api[REST 和 WebSocket API]
     services[Go 服务与 AI 运行时]
-    server --> rest
-    server --> ws
-    rest --> services
-    ws --> services
+    server --> api --> services
   end
 
-  customer -->|HTTPS / REST| server
-  customer -->|WSS| ws
-  ui -->|HTTPS / REST| server
-  ui -->|WSS| ws
+  customer -->|HTTPS / REST / WSS| api
+  ui -->|HTTPS / REST / WSS| api
 
-  services --> mysql[(MySQL)]
-  services --> qdrant[(Qdrant)]
-  services -. 可选 .-> lance[(LanceDB)]
-  services --> models[LLM 与嵌入模型服务]
-  services --> smtp[SMTP 邮件发送]
-  services --> storage[文件 / 对象存储]
-  services <--> channels[外部渠道适配器]
-  services <--> mcp[MCP 服务与工具]
+  services --> data[MySQL / Qdrant / 可选 LanceDB]
+  services --> integrations[LLM / 嵌入模型 / SMTP / 文件与对象存储 / 渠道适配器 / MCP]
 ```
 
 默认 Compose 部署由 KestrelDesk、MySQL 和 Qdrant 组成；LanceDB 为可选配置。模型、邮件、渠道和存储服务按需配置。代码结构和信任边界见[架构说明](docs/engineering/architecture.md)。
@@ -413,7 +389,7 @@ flowchart LR
 ### AI 与 RAG 请求流程
 
 ```mermaid
-flowchart LR
+flowchart TB
   browser[客户浏览器 / 渠道] --> config[已配置渠道]
   config --> exchange[客户会话交换]
   exchange --> conversation[会话]
@@ -435,7 +411,7 @@ flowchart LR
 ### 人工转接
 
 ```mermaid
-flowchart LR
+flowchart TB
   customer[客户] --> agent[AI Agent]
   agent --> request[转人工请求]
   request --> checks[业务与团队检查]
