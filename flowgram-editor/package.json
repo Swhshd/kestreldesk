@@ -5,6 +5,7 @@
   "keywords": [],
   "license": "MIT",
   "private": true,
+  "x-kestreldesk-modifiedNotice": "This file has been modified for the KestrelDesk project.",
   "main": "./src/index.ts",
   "files": [
     "src/",

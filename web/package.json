@@ -2,6 +2,7 @@
   "name": "dashboard",
   "version": "0.1.0",
   "private": true,
+  "x-kestreldesk-modifiedNotice": "This file has been modified for the KestrelDesk project.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

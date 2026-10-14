@@ -1,6 +1,7 @@
 /**
  * Copyright (c) 2025 Bytedance Ltd. and/or its affiliates
  * SPDX-License-Identifier: MIT
+ * This file has been modified for the KestrelDesk project.
  */
 
 import { FlowDocumentJSON } from './typings';
