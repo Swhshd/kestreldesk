@@ -72,6 +72,16 @@ func (s *dashboardService) GetOverview(rangeValue string, locale string) respons
 	knowledgeRetrieveFailCount := repositories.DashboardRepository.CountKnowledgeRetrieveLogs(db, func(tx *gorm.DB) *gorm.DB {
 		return tx.Where("created_at >= ? AND answer_status IN ?", todayStart, []int{2, 3, 4})
 	})
+	// Classic RAG answer runs persist KnowledgeRetrieveLog rows. Agent Loop's
+	// pre-retrieval uses KnowledgeRetriever directly and persists only an
+	// AgentStep, so these are disjoint execution paths and can be added safely.
+	agentStepRetrieveCount, agentStepRetrieveFailCount := repositories.DashboardRepository.CountAgentKnowledgeRetrievalSteps(db, func(tx *gorm.DB) *gorm.DB {
+		return tx.Where("created_at >= ?", todayStart)
+	})
+	knowledgeRetrieveCount, knowledgeRetrieveFailCount = combineKnowledgeRetrievalMetrics(
+		knowledgeRetrieveCount, knowledgeRetrieveFailCount,
+		agentStepRetrieveCount, agentStepRetrieveFailCount,
+	)
 	agentRunFailCount := repositories.DashboardRepository.CountAgentRuns(db, func(tx *gorm.DB) *gorm.DB {
 		return tx.Where("created_at >= ? AND status = ?", todayStart, "failed")
 	})
@@ -382,6 +392,10 @@ func calcRate(numerator, denominator int64) float64 {
 	}
 	ratio := float64(numerator) / float64(denominator) * 100
 	return float64(int(ratio*10+0.5)) / 10
+}
+
+func combineKnowledgeRetrievalMetrics(logTotal, logFailed, agentStepTotal, agentStepFailed int64) (int64, int64) {
+	return logTotal + agentStepTotal, logFailed + agentStepFailed
 }
 
 func calcAIServiceRate(conversations []models.Conversation) float64 {

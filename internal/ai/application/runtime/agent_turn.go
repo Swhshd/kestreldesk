@@ -15,19 +15,21 @@ import (
 )
 
 type agentLoopTurn struct {
-	RetrieverCount int
-	RetrieveErr    error
-	ResponsePolicy agentLoopResponsePolicy
-	SystemPrompt   string
-	UserPrompt     string
-	HistoryCount   int
-	AllowedTools   []string
-	ToolPolicy     agentLoopToolPolicy
-	Skills         map[int64]models.SkillDefinition
-	Workflows      map[int64]svc.AgentRevisionWorkflowBinding
+	RetrieverCount     int
+	RetrieveErr        error
+	RetrievalAttempted bool
+	ResponsePolicy     agentLoopResponsePolicy
+	SystemPrompt       string
+	UserPrompt         string
+	HistoryCount       int
+	AllowedTools       []string
+	ToolPolicy         agentLoopToolPolicy
+	Skills             map[int64]models.SkillDefinition
+	Workflows          map[int64]svc.AgentRevisionWorkflowBinding
 }
 
 func (e *AgentLoopEngine) prepareTurn(ctx context.Context, req RunInput, snapshot *svc.AgentRevisionSnapshot) agentLoopTurn {
+	retrievalAttempted := e.retrieve != nil && len(utils.SplitInt64s(req.AIAgent.KnowledgeIDs)) > 0
 	knowledgeContext, retrieverCount, retrieveErr := e.retrieveKnowledge(ctx, req.AIAgent, req.UserMessage.Content)
 	responsePolicy := evaluateAgentLoopResponsePolicy(req.AIAgent, knowledgeContext, retrieveErr)
 	systemPrompt := buildAgentLoopSystemPrompt(req.AIAgent, len(utils.SplitInt64s(req.AIAgent.KnowledgeIDs)) > 0, knowledgeContext, retrieveErr)
@@ -74,15 +76,16 @@ func (e *AgentLoopEngine) prepareTurn(ctx context.Context, req RunInput, snapsho
 	systemPrompt += "\n\nAvailable capabilities:\n" + strings.Join(catalog, "\n")
 	systemPrompt += "\n\nUse tool_search with an exact capability code only when needed. You decide whether to answer directly, activate a Skill, execute a Workflow, retrieve knowledge, or call MCP. A Skill activation returns instructions for this same run. Never invent a capability code. For any requested internal action such as human handoff, call conversation_decision; its action is a structured proposal only, and the runtime performs the action. When the customer explicitly asks for human support, set action=handoff, handoffInitiator=customer, and handoffConfirmed=true; do not ask again. Use ask_handoff_confirmation only when you, not the customer, recommend an unconfirmed handoff, with handoffInitiator=agent and handoffConfirmed=false. Never claim a handoff, assignment, or queue entry succeeded in reply text."
 	return agentLoopTurn{
-		RetrieverCount: retrieverCount,
-		RetrieveErr:    retrieveErr,
-		ResponsePolicy: responsePolicy,
-		SystemPrompt:   systemPrompt,
-		UserPrompt:     userPrompt,
-		HistoryCount:   historyCount,
-		AllowedTools:   allowedTools,
-		ToolPolicy:     parseAgentLoopToolPolicy(req.AIAgent.ToolPolicy),
-		Skills:         skills,
-		Workflows:      workflows,
+		RetrieverCount:     retrieverCount,
+		RetrieveErr:        retrieveErr,
+		RetrievalAttempted: retrievalAttempted,
+		ResponsePolicy:     responsePolicy,
+		SystemPrompt:       systemPrompt,
+		UserPrompt:         userPrompt,
+		HistoryCount:       historyCount,
+		AllowedTools:       allowedTools,
+		ToolPolicy:         parseAgentLoopToolPolicy(req.AIAgent.ToolPolicy),
+		Skills:             skills,
+		Workflows:          workflows,
 	}
 }

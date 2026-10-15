@@ -99,6 +99,21 @@ func (r *dashboardRepository) CountKnowledgeRetrieveLogs(db *gorm.DB, query func
 	return count
 }
 
+func (r *dashboardRepository) CountAgentKnowledgeRetrievalSteps(db *gorm.DB, query func(tx *gorm.DB) *gorm.DB) (int64, int64) {
+	var counts struct {
+		TotalCount  int64
+		FailedCount int64
+	}
+	tx := db.Model(&models.AgentStep{}).
+		Select("COUNT(*) AS total_count, COALESCE(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END), 0) AS failed_count", "failed").
+		Where("step_type = ? AND step_code = ? AND status IN ?", "knowledge", "knowledge_retrieve", []string{"completed", "failed"})
+	if query != nil {
+		tx = query(tx)
+	}
+	tx.Scan(&counts)
+	return counts.TotalCount, counts.FailedCount
+}
+
 func (r *dashboardRepository) CountAgentRuns(db *gorm.DB, query func(tx *gorm.DB) *gorm.DB) int64 {
 	var count int64
 	tx := db.Model(&models.AgentRun{})

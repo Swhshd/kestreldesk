@@ -63,7 +63,7 @@ func (e *AgentLoopEngine) Run(ctx context.Context, req RunInput) (*RunResult, er
 	req.UserMessage.Content = utils.BuildRuntimeMessageText(req.UserMessage.MessageType, req.UserMessage.Content)
 	snapshot, err := svc.AgentRevisionService.ResolvePublishedSnapshot(req.AIAgent, req.AIConfig)
 	if err != nil {
-		_, _ = writeAgentLoopRun(req, startedAt, nil, "", 0, 0, nil, agentLoopSkillContext{}, agentLoopResponsePolicy{}, nil, err, false, nil)
+		_, _ = writeAgentLoopRun(req, startedAt, nil, "", 0, 0, false, nil, agentLoopSkillContext{}, agentLoopResponsePolicy{}, nil, err, false, nil)
 		return nil, err
 	}
 	req.AIAgent = snapshot.Agent
@@ -76,7 +76,7 @@ func (e *AgentLoopEngine) Run(ctx context.Context, req RunInput) (*RunResult, er
 		e.toolSearchExecutor(req, turn, &state, &toolCalls))
 	if state.Interrupted != nil {
 		result := state.Interrupted
-		runID, recordErr := writeAgentLoopRun(req, startedAt, &ai.ChatCompletionResult{Content: result.ReplyText, ModelName: req.AIConfig.ModelName}, turn.UserPrompt, turn.HistoryCount, turn.RetrieverCount, turn.RetrieveErr, state.SkillContext, turn.ResponsePolicy, toolCalls, nil, true, state.WorkflowSteps)
+		runID, recordErr := writeAgentLoopRun(req, startedAt, &ai.ChatCompletionResult{Content: result.ReplyText, ModelName: req.AIConfig.ModelName}, turn.UserPrompt, turn.HistoryCount, turn.RetrieverCount, turn.RetrievalAttempted, turn.RetrieveErr, state.SkillContext, turn.ResponsePolicy, toolCalls, nil, true, state.WorkflowSteps)
 		if recordErr != nil {
 			return nil, recordErr
 		}
@@ -84,32 +84,32 @@ func (e *AgentLoopEngine) Run(ctx context.Context, req RunInput) (*RunResult, er
 		return result, nil
 	}
 	if loopErr != nil {
-		_, _ = writeAgentLoopRun(req, startedAt, nil, turn.UserPrompt, turn.HistoryCount, turn.RetrieverCount, turn.RetrieveErr, state.SkillContext, turn.ResponsePolicy, toolCalls, loopErr, false, state.WorkflowSteps)
+		_, _ = writeAgentLoopRun(req, startedAt, nil, turn.UserPrompt, turn.HistoryCount, turn.RetrieverCount, turn.RetrievalAttempted, turn.RetrieveErr, state.SkillContext, turn.ResponsePolicy, toolCalls, loopErr, false, state.WorkflowSteps)
 		return nil, loopErr
 	}
 	if loopResult == nil {
 		err = errorsx.InvalidParam("agent loop returned an empty result")
-		_, _ = writeAgentLoopRun(req, startedAt, nil, turn.UserPrompt, turn.HistoryCount, turn.RetrieverCount, turn.RetrieveErr, state.SkillContext, turn.ResponsePolicy, toolCalls, err, false, state.WorkflowSteps)
+		_, _ = writeAgentLoopRun(req, startedAt, nil, turn.UserPrompt, turn.HistoryCount, turn.RetrieverCount, turn.RetrievalAttempted, turn.RetrieveErr, state.SkillContext, turn.ResponsePolicy, toolCalls, err, false, state.WorkflowSteps)
 		return nil, err
 	}
 	result := &loopResult.ChatCompletionResult
 	replyText, handoffRequested, handoffReason, err := resolveAgentLoopReply(result.Content, state.Decision)
 	if err != nil {
-		_, _ = writeAgentLoopRun(req, startedAt, nil, turn.UserPrompt, turn.HistoryCount, turn.RetrieverCount, turn.RetrieveErr, state.SkillContext, turn.ResponsePolicy, toolCalls, err, false, state.WorkflowSteps)
+		_, _ = writeAgentLoopRun(req, startedAt, nil, turn.UserPrompt, turn.HistoryCount, turn.RetrieverCount, turn.RetrievalAttempted, turn.RetrieveErr, state.SkillContext, turn.ResponsePolicy, toolCalls, err, false, state.WorkflowSteps)
 		return nil, err
 	}
 	result.Content = replyText
 	if result.Content == "" && !handoffRequested {
 		err = errorsx.InvalidParam("Agent Loop returned an empty reply")
-		_, _ = writeAgentLoopRun(req, startedAt, nil, turn.UserPrompt, turn.HistoryCount, turn.RetrieverCount, turn.RetrieveErr, state.SkillContext, turn.ResponsePolicy, toolCalls, err, false, state.WorkflowSteps)
+		_, _ = writeAgentLoopRun(req, startedAt, nil, turn.UserPrompt, turn.HistoryCount, turn.RetrieverCount, turn.RetrievalAttempted, turn.RetrieveErr, state.SkillContext, turn.ResponsePolicy, toolCalls, err, false, state.WorkflowSteps)
 		return nil, err
 	}
 	result.Content, err = normalizeAgentLoopReply(result.Content, handoffRequested)
 	if err != nil {
-		_, _ = writeAgentLoopRun(req, startedAt, nil, turn.UserPrompt, turn.HistoryCount, turn.RetrieverCount, turn.RetrieveErr, state.SkillContext, turn.ResponsePolicy, toolCalls, err, false, state.WorkflowSteps)
+		_, _ = writeAgentLoopRun(req, startedAt, nil, turn.UserPrompt, turn.HistoryCount, turn.RetrieverCount, turn.RetrievalAttempted, turn.RetrieveErr, state.SkillContext, turn.ResponsePolicy, toolCalls, err, false, state.WorkflowSteps)
 		return nil, err
 	}
-	runID, recordErr := writeAgentLoopRun(req, startedAt, result, turn.UserPrompt, turn.HistoryCount, turn.RetrieverCount, turn.RetrieveErr, state.SkillContext, turn.ResponsePolicy, toolCalls, nil, false, state.WorkflowSteps)
+	runID, recordErr := writeAgentLoopRun(req, startedAt, result, turn.UserPrompt, turn.HistoryCount, turn.RetrieverCount, turn.RetrievalAttempted, turn.RetrieveErr, state.SkillContext, turn.ResponsePolicy, toolCalls, nil, false, state.WorkflowSteps)
 	if recordErr != nil {
 		return nil, recordErr
 	}
@@ -1010,7 +1010,7 @@ func buildAgentLoopSystemPrompt(agent models.AIAgent, hasKnowledgeBase bool, kno
 	return prompt
 }
 
-func writeAgentLoopRun(req RunInput, startedAt time.Time, result *ai.ChatCompletionResult, inputPreview string, historyCount int, retrieverCount int, retrieveErr error, skillContext agentLoopSkillContext, responsePolicy agentLoopResponsePolicy, toolCalls []svc.AgentLoopToolCallInput, cause error, interrupted bool, workflowSteps []svc.AgentLoopStepInput) (int64, error) {
+func writeAgentLoopRun(req RunInput, startedAt time.Time, result *ai.ChatCompletionResult, inputPreview string, historyCount int, retrieverCount int, retrievalAttempted bool, retrieveErr error, skillContext agentLoopSkillContext, responsePolicy agentLoopResponsePolicy, toolCalls []svc.AgentLoopToolCallInput, cause error, interrupted bool, workflowSteps []svc.AgentLoopStepInput) (int64, error) {
 	endedAt := time.Now()
 	status := "completed"
 	errorMessage := ""
@@ -1028,7 +1028,7 @@ func writeAgentLoopRun(req RunInput, startedAt time.Time, result *ai.ChatComplet
 		completionTokens = result.CompletionTokens
 	}
 	trace, _ := json.Marshal(map[string]any{"runtime": "agent-loop", "status": status, "historyMessageCount": historyCount, "retrieverCount": retrieverCount})
-	additionalSteps := agentLoopAdditionalSteps(req, retrieverCount, retrieveErr, skillContext, responsePolicy)
+	additionalSteps := agentLoopAdditionalSteps(req, retrieverCount, retrievalAttempted, retrieveErr, skillContext, responsePolicy)
 	additionalSteps = append(additionalSteps, workflowSteps...)
 	var runID int64
 	err := sqls.WithTransaction(func(tx *sqls.TxContext) error {
@@ -1056,7 +1056,7 @@ func firstWorkflowStepRunID(items []svc.AgentLoopStepInput) int64 {
 	return 0
 }
 
-func agentLoopAdditionalSteps(req RunInput, retrieverCount int, retrieveErr error, skillContext agentLoopSkillContext, responsePolicy agentLoopResponsePolicy) []svc.AgentLoopStepInput {
+func agentLoopAdditionalSteps(req RunInput, retrieverCount int, retrievalAttempted bool, retrieveErr error, skillContext agentLoopSkillContext, responsePolicy agentLoopResponsePolicy) []svc.AgentLoopStepInput {
 	steps := make([]svc.AgentLoopStepInput, 0, 3)
 	if skillContext.Skill != nil {
 		steps = append(steps, svc.AgentLoopStepInput{
@@ -1064,7 +1064,7 @@ func agentLoopAdditionalSteps(req RunInput, retrieverCount int, retrieveErr erro
 			InputPreview: strings.TrimSpace(req.UserMessage.Content), OutputPreview: "activated Skill: " + skillContext.SkillName(),
 		})
 	}
-	if len(utils.SplitInt64s(req.AIAgent.KnowledgeIDs)) > 0 {
+	if retrievalAttempted && len(utils.SplitInt64s(req.AIAgent.KnowledgeIDs)) > 0 {
 		status := "completed"
 		errorMessage := ""
 		if retrieveErr != nil {

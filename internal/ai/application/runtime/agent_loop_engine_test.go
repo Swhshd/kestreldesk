@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	ai "github.com/Swhshd/kestreldesk/internal/ai"
 	"github.com/Swhshd/kestreldesk/internal/models"
@@ -381,6 +382,92 @@ func TestAgentTurnPublishesAllConfiguredCapabilityKinds(t *testing.T) {
 		if !strings.Contains(turn.SystemPrompt, code) {
 			t.Fatalf("capability %q missing from prompt:\n%s", code, turn.SystemPrompt)
 		}
+	}
+}
+
+func TestAgentLoopRetrievalAuditDoesNotWriteLegacyRetrieveLog(t *testing.T) {
+	previousDB := sqls.DB()
+	dbName := "file:" + strings.ReplaceAll(t.Name(), "/", "_") + "?mode=memory&cache=shared"
+	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	sqls.SetDB(db)
+	t.Cleanup(func() { sqls.SetDB(previousDB) })
+	if err := db.AutoMigrate(&models.AgentRun{}, &models.AgentStep{}, &models.AgentToolCall{}, &models.KnowledgeRetrieveLog{}); err != nil {
+		t.Fatalf("auto-migrate retrieval audit models: %v", err)
+	}
+
+	startedAt := time.Now()
+	runID, err := writeAgentLoopRun(
+		RunInput{
+			Conversation: models.Conversation{ID: 23},
+			AIAgent:      models.AIAgent{ID: 7, KnowledgeIDs: "1"},
+			UserMessage:  models.Message{ID: 51, Content: "shipping policy"},
+		},
+		startedAt,
+		&ai.ChatCompletionResult{Content: "answer"},
+		"shipping policy",
+		0,
+		1,
+		true,
+		nil,
+		agentLoopSkillContext{},
+		agentLoopResponsePolicy{},
+		nil,
+		nil,
+		false,
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("persist Agent Loop retrieval audit: %v", err)
+	}
+
+	var retrievalSteps int64
+	if err := db.Model(&models.AgentStep{}).
+		Where("agent_run_id = ? AND step_type = ? AND step_code = ?", runID, "knowledge", "knowledge_retrieve").
+		Count(&retrievalSteps).Error; err != nil {
+		t.Fatalf("count Agent Loop retrieval steps: %v", err)
+	}
+	var legacyLogs int64
+	if err := db.Model(&models.KnowledgeRetrieveLog{}).Count(&legacyLogs).Error; err != nil {
+		t.Fatalf("count legacy retrieval logs: %v", err)
+	}
+	if retrievalSteps != 1 || legacyLogs != 0 {
+		t.Fatalf("Agent Loop persistence = (%d AgentSteps, %d legacy logs), want (1, 0)", retrievalSteps, legacyLogs)
+	}
+}
+
+func TestAgentLoopSnapshotFailureDoesNotRecordKnowledgeRetrieval(t *testing.T) {
+	previousDB := sqls.DB()
+	dbName := "file:" + strings.ReplaceAll(t.Name(), "/", "_") + "?mode=memory&cache=shared"
+	db, err := gorm.Open(sqlite.Open(dbName), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	sqls.SetDB(db)
+	t.Cleanup(func() { sqls.SetDB(previousDB) })
+	if err := db.AutoMigrate(&models.AgentRevision{}, &models.AgentRun{}, &models.AgentStep{}, &models.AgentToolCall{}); err != nil {
+		t.Fatalf("auto-migrate Agent Loop audit models: %v", err)
+	}
+
+	_, err = NewAgentLoopEngine().Run(context.Background(), RunInput{
+		AIAgent:     models.AIAgent{ID: 7, PublishedRevisionID: 99, KnowledgeIDs: "1"},
+		AIConfig:    models.AIConfig{ID: 8},
+		UserMessage: models.Message{Content: "shipping policy"},
+	})
+	if err == nil {
+		t.Fatal("Run succeeded with a missing published revision")
+	}
+
+	var retrievalSteps int64
+	if err := db.Model(&models.AgentStep{}).
+		Where("step_type = ? AND step_code = ?", "knowledge", "knowledge_retrieve").
+		Count(&retrievalSteps).Error; err != nil {
+		t.Fatalf("count knowledge retrieval steps: %v", err)
+	}
+	if retrievalSteps != 0 {
+		t.Fatalf("snapshot failure wrote %d knowledge retrieval steps, want 0 because retrieval was never attempted", retrievalSteps)
 	}
 }
 
