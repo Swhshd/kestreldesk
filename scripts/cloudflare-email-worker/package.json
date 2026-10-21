@@ -8,12 +8,12 @@
     "deploy": "wrangler deploy"
   },
   "dependencies": {
-    "postal-mime": "^2.1.8"
+    "postal-mime": "^4.0.8"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241022.0",
-    "typescript": "^6.0.3",
-    "wrangler": "^3.84.1"
+    "@cloudflare/workers-types": "^5.20261018.1",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.151.1"
   },
   "pnpm": {
     "overrides": {
