@@ -53,8 +53,8 @@
     "typescript": "^6.0.3",
     "eslint": "^9.0.0",
     "cross-env": "~7.0.3",
-    "@flowgram.ai/eslint-config": "1.0.12",
-    "@flowgram.ai/ts-config": "1.0.12"
+    "@flowgram.ai/eslint-config": "1.0.16",
+    "@flowgram.ai/ts-config": "1.0.16"
   },
   "pnpm": {
     "overrides": {
